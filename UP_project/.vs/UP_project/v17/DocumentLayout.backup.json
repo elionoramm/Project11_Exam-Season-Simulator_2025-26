@@ -1,0 +1,37 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\elena\\Documents\\University\\Year 1\\Semester I_Introduction to Programing\\UPpr_25-26_fn6MI0600619_KP11\\UP_project_11_2025-26\\UP_project\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{12ED47CA-177F-4D45-95CE-46D07ADDA8F7}|UP_project\\UP_project.vcxproj|C:\\Users\\elena\\Documents\\University\\Year 1\\Semester I_Introduction to Programing\\UPpr_25-26_fn6MI0600619_KP11\\UP_project_11_2025-26\\UP_project\\UP_project\\UP_project.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{12ED47CA-177F-4D45-95CE-46D07ADDA8F7}|UP_project\\UP_project.vcxproj|solutionrelative:UP_project\\UP_project.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "UP_project.cpp",
+              "DocumentMoniker": "C:\\Users\\elena\\Documents\\University\\Year 1\\Semester I_Introduction to Programing\\UPpr_25-26_fn6MI0600619_KP11\\UP_project_11_2025-26\\UP_project\\UP_project\\UP_project.cpp",
+              "RelativeDocumentMoniker": "UP_project\\UP_project.cpp",
+              "ToolTip": "C:\\Users\\elena\\Documents\\University\\Year 1\\Semester I_Introduction to Programing\\UPpr_25-26_fn6MI0600619_KP11\\UP_project_11_2025-26\\UP_project\\UP_project\\UP_project.cpp*",
+              "RelativeToolTip": "UP_project\\UP_project.cpp*",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAMAAAATAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-12-31T13:12:19.132Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
