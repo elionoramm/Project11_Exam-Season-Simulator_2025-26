@@ -1,11 +1,12 @@
 #include <iostream>
-int money;
-int energy;
-int sanity;
-int knowledge;
+double money;
+double energy;
+double sanity;
+double knowledge;
+unsigned int examNumber = 0;
 unsigned int examsPassed = 0;
 unsigned int currentDay;
-const unsigned int fistExamDay = 8;
+const unsigned int firstExamDay = 8;
 const unsigned int secondExamDay = 17;
 const unsigned int thirdExamDay = 26;
 const unsigned int forthExamDay = thirdExamDay + 1 + rand() % (fifthExamDay - thirdExamDay - 1);
@@ -59,7 +60,7 @@ void startGame() { //not finished
         startGame();
     }
 }
-void endGameConditions() {
+void gameOverConditions() {
     if (sanity < 0) {
         std::cout << "You have lost your sanity. Game over!" << std::endl;
         //exitGame();
@@ -69,7 +70,7 @@ void endGameConditions() {
         //exitGame();
 	}
 }
-void limitStat(int& stat) {
+void limitStat(double& stat) {
     if(stat > 100) {
         stat = 100;
 	}
@@ -77,43 +78,62 @@ void limitStat(int& stat) {
 		stat = 0;
     }
 }
-void updateStat(int& stat, int amount) {
+void fainting() {
+    if (energy <= 0) {
+        std::cout << "You have fainted due to exhaustion. You lose a day." << std::endl;
+        energy = 40;
+		updateStat(sanity, -10);
+		currentDay++;
+	}
+}
+void updateStat(double& stat, int amount) {
     stat += amount;
-	endGameConditions();
+    gameOverConditions();
     limitStat(stat);
 }
+double partialSuccess() {
+    if (energy >= 80) {
+        return 1;
+    }
+    else if (energy >= 40) {
+        return 0.75;
+    }
+    else {
+        return 0.5;
+    }
+}
 void goToLectures() {
-    updateStat(knowledge, 15);
+    updateStat(knowledge, 15 * partialSuccess());
 	updateStat(energy, -15);
 	updateStat(sanity, -10);
 }
 void studyAtHome() {
-	updateStat(knowledge, 20);
+	updateStat(knowledge, 20 * partialSuccess());
 	updateStat(energy, -20);
 	updateStat(sanity, -15);
 }
 void studyWithFriend() {
-	updateStat(knowledge, 5);
+	updateStat(knowledge, 5 * partialSuccess());
 	updateStat(energy, -10);
-	updateStat(sanity, 10);
+	updateStat(sanity, 10 * partialSuccess());
 }
 void eatInCafeteria() {
-    updateStat(energy, 15);
+    updateStat(energy, 15 * partialSuccess());
     updateStat(money, -5);
-	updateStat(sanity, 5);
+	updateStat(sanity, 5 * partialSuccess());
 }
 void eatDuner() {
-	updateStat(energy, 20);
+	updateStat(energy, 20 * partialSuccess());
 	updateStat(money, -10);
-	updateStat(sanity, 15);
+	updateStat(sanity, 15 * partialSuccess());
 }
 void goToBar() {
-	updateStat(sanity, 20);
+	updateStat(sanity, 20 * partialSuccess());
     updateStat(money, -20);
 	updateStat(energy, -15);
 }
 void goToClub() {
-    updateStat(sanity, 40);
+    updateStat(sanity, 40 * partialSuccess());
 	updateStat(money, -25);
 	updateStat(energy, -30);
 }
@@ -126,8 +146,40 @@ void work() {
     updateStat(energy, -20);
 	updateStat(sanity, -10);
 }
+bool isExamDay() {
+	if (currentDay != firstExamDay && currentDay != secondExamDay && currentDay != thirdExamDay) { // split for better readability
+        if (currentDay != forthExamDay && currentDay != fifthExamDay) {
+            return  false;
+        }
+        else {
+			examNumber++;
+			return true;
+        }
+    }
+    else {
+        examNumber++;
+		return true;
+    }
+}
+bool passExam() {
+	double luck = rand() % 101;
+	double penalty = (examNumber - 1) * 5;
+    double success = knowledge * 0.75 + sanity * 0.1 + energy * 0.1 + luck * 0.2 - penalty;
+	return success >= 75;
+}
 void takeExam() {
-	updateStat(energy, -20);
+    if (isExamDay()) {
+        updateStat(energy, -20);
+        if (passExam()) {
+            examsPassed++;
+            updateStat(sanity, 20);
+            updateStat(energy, -20);
+        }
+        else {
+            updateStat(sanity, -30);
+            updateStat(energy, -20);
+        }
+    }
 }
 void processCommand() {
 	int choice;
@@ -161,8 +213,9 @@ void processCommand() {
 		work();
 		break;
     case 10:
-		takeExam();
-		break;
+		std::cout << "Today is not an exam day!. Please choose a different activity for today." << std::endl;
+		processCommand();
+        break;
     case 11:
         //exitGame();
 		break;
@@ -185,11 +238,51 @@ void dailyActivities() {
     std::cout << "[9] Work" << std::endl;
     std::cout << "[10] Take an exam" << std::endl;
     std::cout << "[11] Leave the game" << std::endl;
-    processCommand();
+    if (isExamDay()) {
+		int choice;
+		std::cin >> choice;
+        while (choice != 10) {
+            std::cout << "Today is an exam day! You must take the exam." << std::endl;
+        }
+		takeExam();
+    }
+    else {
+		processCommand();
+    }
+}
+void event() {
+	int chance = 1 + rand() % 30;
+    if (chance == 1) {
+        int eventNumber = 1 + rand() % 4;
+        switch (eventNumber) {
+        case 1:
+            std::cout << "Mom and dad have sent you money." << std::endl;
+            updateStat(money, 30);
+            break;
+        case 2:
+            std::cout << "A friend buys you coffee." << std::endl;
+            updateStat(sanity, 10);
+            break;
+        case 3:
+            std::cout << "You got sick." << std::endl;
+            updateStat(energy, -20);
+            break;
+        case 4:
+            std::cout << "There is no electricity in your building." << std::endl;
+            currentDay++;
+            event();
+            break;
+        }
+    }
+}
+void newDay() {
+    currentDay++;
+    event();
+	dailyActivities();
 }
 int main()
 {
     startGame();
-	dailyActivities();
+    newDay();
     return 0;
 }
