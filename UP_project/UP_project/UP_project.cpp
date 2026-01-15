@@ -1,3 +1,18 @@
+/**
+*
+* Solution to course project # 11
+* Introduction to programming course
+* Faculty of Mathematics and Informatics of Sofia University
+* Winter semester 2025/2026
+*
+* @author Elena Markova
+* @idnumber 6MI0600619
+* @compiler VC
+*
+* complete solution to the course project
+*
+*/
+
 #include <iostream>
 #include <windows.h>
 #include <fstream>
