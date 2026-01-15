@@ -1,16 +1,25 @@
 #include <iostream>
+#include <windows.h>
+#include <fstream>
+// Game state variables
 double money;
 double energy;
 double sanity;
 double knowledge;
 unsigned int examNumber = 0;
 unsigned int examsPassed = 0;
-unsigned int currentDay;
-const unsigned int firstExamDay = 8;
-const unsigned int secondExamDay = 17;
-const unsigned int thirdExamDay = 26;
-const unsigned int fifthExamDay = 45;
-const unsigned int forthExamDay = thirdExamDay + 1 + rand() % (fifthExamDay - thirdExamDay - 1);
+unsigned int currentDay = 0;
+unsigned int examDays[5] = { 8, 17, 26, 0, 45 };
+
+// Box drawing characters and line width
+const char TOP_LEFT = 201;
+const char TOP_RIGHT = 187;
+const char BOTTOM_LEFT = 200;
+const char BOTTOM_RIGHT = 188;
+const char HORIZONTAL = 205;
+const char VERTICAL = 186;
+const int LINE_WIDTH = 40;
+
 void StartGame();
 void SetDifficulty();
 void LoadGame();
@@ -35,44 +44,59 @@ void Rest();
 void Work();
 void TakeExam();
 bool PassExam();
+void SaveGame();
 void EndGame();
-void exitGame();
-int main()
-{
+void ExitGame();
+int DigitsAfterDecimalPoint(double number);
+int ToInt(double number);
+int SymbolsInNumber(double number);
+void NumberToString(double number, char* numberString);
+void SetWidthLine(const int width, const char messageStart[], double number = -1, const char messageEnd[] = " ");
+void HorizontalLine(int width);
+void TopBorder(int width);
+void BottomBorder(int width);
+int main() {
     StartGame();
-    while (currentDay <= 45) {
+    while (currentDay < 45) {
         NewDay();
-		if (currentDay == 45) {
-            EndGame();
-        }
     }
+    EndGame();
     return 0;
 }
-void StartGame() { //not finished
-    std::cout << " [1] Start a new game" << std::endl;
-    std::cout << " [2] Load game from a file" << std::endl;
+
+// in this function, the player can choose to start a new game or load a saved game
+void StartGame() {
+	TopBorder(LINE_WIDTH);
+    SetWidthLine(LINE_WIDTH, "[1] Start a new game");
+	SetWidthLine(LINE_WIDTH, "[2] Load game from a file");
+	BottomBorder(LINE_WIDTH);
     int choice;
     std::cin >> choice;
     switch (choice) {
     case 1:
+        system("cls");
+        examDays[3] = examDays[2] + 1 + rand() % (examDays[4] - examDays[2] - 1); // generate 4th exam day
         SetDifficulty();
         break;
     case 2:
-        //loadGame();
+        system("cls");
+        LoadGame();
         break;
     default:
         std::cout << "Invalid choice. Please try again." << std::endl;
         StartGame();
     }
 }
+
+// setting initial stats based on chosen difficulty
 void SetDifficulty() {
     std::cout << "Select difficulty level:" << std::endl;
     std::cout << "[1] Easy" << std::endl;
     std::cout << "[2] Medium" << std::endl;
     std::cout << "[3] Hard" << std::endl;
-    currentDay = 0;
     int choice;
     std::cin >> choice;
+    system("cls");
     switch (choice) {
     case 1:
         money = 100;
@@ -97,45 +121,102 @@ void SetDifficulty() {
         SetDifficulty();
     }
 }
+
+// loading game state from an existing file
 void LoadGame() {
-    //to be implemented
+	std::fstream file;
+	file.open("savegame.txt", std::fstream::in);
+    if (file.is_open()) {
+        file >> money;
+        file >> energy;
+        file >> sanity;
+        file >> knowledge;
+        file >> examNumber;
+        file >> examsPassed;
+        file >> currentDay;
+        file >> examDays[3];
+        file.close();
+    }
+    else {
+        std::cout << "No save file found. Starting a new game." << std::endl;
+        SetDifficulty();
+	}
 }
+
+// progressing to a new day
 void NewDay() {
     currentDay++;
-    std::cout << " Day " << currentDay << " out of 45" << std::endl;
-    std::cout << " Money: " << money << std::endl;
-    std::cout << " Energy: " << energy << std::endl;
-    std::cout << " Sanity: " << sanity << std::endl;
-    std::cout << " Knowledge: " << knowledge << std::endl;
-    std::cout << " Exams passed: " << examsPassed << " out of 5" << std::endl;
+    std::cout << TOP_LEFT;
+	HorizontalLine(LINE_WIDTH);
+	std::cout << TOP_RIGHT << std::endl;
+    SetWidthLine(LINE_WIDTH, "Day", (double)currentDay, "out of 45");
+    SetWidthLine(LINE_WIDTH, "Money:", money);
+    SetWidthLine(LINE_WIDTH, "Energy:", energy);
+    SetWidthLine(LINE_WIDTH, "Sanity:", sanity);
+    SetWidthLine(LINE_WIDTH, "Knowledge:", knowledge);
+    SetWidthLine(LINE_WIDTH, "Exams passed:", (double)examsPassed, "out of 5");
+	std::cout << BOTTOM_LEFT;
+	HorizontalLine(LINE_WIDTH);
+	std::cout << BOTTOM_RIGHT << std::endl;
     Event();
     DailyActivities();
+	SaveGame();
+	system("cls");
 }
+
+// random events that can occur at the start of a new day
 void Event() {
-    int chance = 1 + rand() % 30;
-    if (chance == 1) {
-        int eventNumber = 1 + rand() % 4;
-        switch (eventNumber) {
-        case 1:
-            std::cout << "Mom and dad have sent you money." << std::endl;
-            UpdateStat(money, 30);
-            break;
-        case 2:
-            std::cout << "A friend buys you coffee." << std::endl;
-            UpdateStat(sanity, 10);
-            break;
-        case 3:
-            std::cout << "You got sick." << std::endl;
-            UpdateStat(energy, -20);
-            break;
-        case 4:
-            std::cout << "There is no electricity in your building." << std::endl;
-            currentDay++;
-            Event();
-            break;
+    if (!IsExamDay()) {
+        int chance = 1 + rand() % 30;
+		if (chance == 1) { // 1/30 chance of random event
+			int eventNumber = 1 + rand() % 4; //1/4 chance for each different event
+            std::cout << std::endl;
+            std::cout << "Random event for the day:" << std::endl;
+            switch (eventNumber) {
+            case 1: 
+                std::cout << "Mom and dad have sent you money." << std::endl;
+
+                UpdateStat(money, 30);
+                break;
+            case 2:
+                std::cout << "A friend buys you coffee." << std::endl;
+                UpdateStat(sanity, 10);
+                break;
+            case 3:
+                std::cout << "You got sick." << std::endl;
+                UpdateStat(energy, -20);
+                break;
+            case 4:
+                std::cout << "There is no electricity in your building." << std::endl;
+                currentDay++;
+                std::cout << "[0] To continue to the next day" << std::endl;
+                int next;
+                std::cin >> next;
+                while (next != 0) {
+                    std::cin >> next;
+                }
+				system("cls");
+                std::cout << TOP_LEFT;
+                HorizontalLine(LINE_WIDTH);
+                std::cout << TOP_RIGHT << std::endl;
+                SetWidthLine(LINE_WIDTH, "Day", (double)currentDay, "out of 45");
+                SetWidthLine(LINE_WIDTH, "Money:", money);
+                SetWidthLine(LINE_WIDTH, "Energy:", energy);
+                SetWidthLine(LINE_WIDTH, "Sanity:", sanity);
+                SetWidthLine(LINE_WIDTH, "Knowledge:", knowledge);
+                SetWidthLine(LINE_WIDTH, "Exams passed:", (double)examsPassed, "out of 5");
+                std::cout << BOTTOM_LEFT;
+                HorizontalLine(LINE_WIDTH);
+                std::cout << BOTTOM_RIGHT << std::endl;
+                Event();
+                break;
+            }
+            std::cout << std::endl;
         }
     }
 }
+
+// presenting daily activity options to the player
 void DailyActivities() {
     std::cout << "What would you like to do today?" << std::endl;
     std::cout << "[1] Go to lectures" << std::endl;
@@ -151,17 +232,20 @@ void DailyActivities() {
     std::cout << "[11] Leave the game" << std::endl;
     if (IsExamDay()) {
         int choice;
-        std::cin >> choice;
-        while (choice != 10) {
+        
+        do {
             std::cout << "Today is an exam day! You must take the exam." << std::endl;
             std::cin >> choice;
         }
+        while (choice != 10);
         TakeExam();
     }
     else {
         ProcessCommand();
     }
 }
+
+// processing the player's chosen activity
 void ProcessCommand() {
     int choice;
     std::cin >> choice;
@@ -198,7 +282,7 @@ void ProcessCommand() {
         ProcessCommand();
         break;
     case 11:
-        exitGame();
+        ExitGame();
         break;
     default:
         std::cout << "Invalid choice. Please try again." << std::endl;
@@ -206,32 +290,39 @@ void ProcessCommand() {
         break;
     }
 }
+
+// checking if the current day is an exam day
 bool IsExamDay() {
-    if (currentDay != firstExamDay && currentDay != secondExamDay && currentDay != thirdExamDay && // split for better readability
-        currentDay != forthExamDay && currentDay != fifthExamDay) {
+    if (currentDay != examDays[0] && currentDay != examDays[1] && currentDay != examDays[2] && // split for better readability
+        currentDay != examDays[3] && currentDay != examDays[4]) {
         return false;
     }
     else {
-        examNumber++;
         return true;
     }
 }
+
+// updating player stats and checking for game over conditions
 void UpdateStat(double& stat, int amount) {
     stat += amount;
     Fainting();
     GameOverConditions();
     LimitStat(stat);
 }
+
+// checking if any game over conditions are met
 void GameOverConditions() {
-    if (sanity < 0) {
+    if (sanity <= 0) {
         EndGame();
-        exitGame();
+        ExitGame();
     }
-    if (money < 0) {
+    if (money <= 0) {
         EndGame();
-        exitGame();
+        ExitGame();
     }
 }
+
+// limiting stats to be within 0-100 range
 void LimitStat(double& stat) {
     if (stat > 100) {
         stat = 100;
@@ -240,14 +331,33 @@ void LimitStat(double& stat) {
         stat = 0;
     }
 }
+
+// handling fainting due to exhaustion
 void Fainting() {
-    if (energy <= 0) {
+    if (energy < 0) {
+        system("cls");
         std::cout << "You have fainted due to exhaustion. You lose a day." << std::endl;
         energy = 40;
         UpdateStat(sanity, -10);
+		if (currentDay + 1 > examDays[4]) {
+            EndGame();
+            ExitGame();
+        }
         currentDay++;
+        if(IsExamDay()) {
+			std::cout << "You have missed an exam due to fainting." << std::endl;
+            examNumber++;
+        }
+        std::cout << "[0] To continue to the next day" << std::endl;
+        int next;
+        std::cin >> next;
+        while (next != 0) {
+            std::cin >> next;
+        }
     }
 }
+
+// calculating partial success based on energy levels
 double PartialSuccess() {
     if (energy >= 80) {
         return 1;
@@ -259,27 +369,45 @@ double PartialSuccess() {
         return 0.5;
     }
 }
+
+// activity implementations
 void GoToLectures() {
-    int chanceOfSkipping = 1 + rand() % 10; // 1/10 chance of skipping
-    if (chanceOfSkipping == 1) {
+    int chanceOfSkipping = rand() % 10; // 1/10 chance of skipping
+    if (chanceOfSkipping == 0) {
+        system("cls");
         std::cout << "You've decided to skip some of the lectures today." << std::endl;
         UpdateStat(knowledge, 10 * PartialSuccess());
         UpdateStat(energy, -10);
         UpdateStat(sanity, -5);
+        std::cout << "[0] To continue to the next day" << std::endl;
+        int next;
+        std::cin >> next;
+        while (next != 0) {
+			std::cout << "Invalid choice. Please try again." << std::endl;
+            std::cin >> next;
+        }
     }
     else {
         UpdateStat(knowledge, 15 * PartialSuccess());
         UpdateStat(energy, -15);
         UpdateStat(sanity, -10);
     }
-}
+} 
 void StudyAtHome() {
-    int chanceOfDistraction = 1 + rand() % 5; // 2/5 chance of distraction
-    if (chanceOfDistraction <= 2) {
+    int chanceOfDistraction = rand() % 5; // 2/5 chance of distraction
+    if (chanceOfDistraction < 2) {
+        system("cls");
         std::cout << "You got distracted while studying at home." << std::endl;
         UpdateStat(knowledge, 10 * PartialSuccess());
         UpdateStat(energy, -10);
         UpdateStat(sanity, -5);
+        std::cout << "[0] To continue to the next day" << std::endl;
+        int next;
+        std::cin >> next;
+        while (next != 0) {
+            std::cout << "Invalid choice. Please try again." << std::endl;
+            std::cin >> next;
+        }
     }
     else {
         UpdateStat(knowledge, 20 * PartialSuccess());
@@ -288,25 +416,42 @@ void StudyAtHome() {
     }
 }
 void StudyWithFriend() {
-    int chanceOfFun = 1 + rand() % 5; // 3/5 chance of fun
-    if (chanceOfFun <= 3) {
+    int chanceOfFun = rand() % 5; // 3/5 chance of fun
+    if (chanceOfFun < 3) {
+        system("cls");
         std::cout << "You had too much fun while studying with your friend." << std::endl;
-        UpdateStat(knowledge, 10 * PartialSuccess());
+        UpdateStat(knowledge, 5 * PartialSuccess());
         UpdateStat(sanity, 15 * PartialSuccess());
         UpdateStat(energy, -10);
-        return;
+        std::cout << "[0] To continue to the next day" << std::endl;
+        int next;
+        std::cin >> next;
+        while (next != 0) {
+            std::cout << "Invalid choice. Please try again." << std::endl;
+            std::cin >> next;
+        }
     }
-    UpdateStat(knowledge, 5 * PartialSuccess());
-    UpdateStat(sanity, 10 * PartialSuccess());
-    UpdateStat(energy, -10);
+    else {
+        UpdateStat(knowledge, 10 * PartialSuccess());
+        UpdateStat(sanity, 10 * PartialSuccess());
+        UpdateStat(energy, -10);
+    }
 }
 void EatInCafeteria() {
-    int chanceOfBadFood = 1 + rand() % 15; // 1/15 chance of bad food
-    if (chanceOfBadFood == 1) {
+    int chanceOfBadFood = rand() % 15; // 1/15 chance of bad food
+    if (chanceOfBadFood == 0) {
+        system("cls");
         std::cout << "The food in the cafeteria was bad." << std::endl;
         UpdateStat(energy, 5 * PartialSuccess());
         UpdateStat(sanity, -5);
         UpdateStat(money, -5);
+        std::cout << "[0] To continue to the next day" << std::endl;
+        int next;
+        std::cin >> next;
+        while (next != 0) {
+            std::cout << "Invalid choice. Please try again." << std::endl;
+            std::cin >> next;
+        }
     }
     else {
         UpdateStat(sanity, 5 * PartialSuccess());
@@ -315,12 +460,20 @@ void EatInCafeteria() {
     }
 }
 void EatDuner() {
-    int chanceOfBadDuner = 1 + rand() % 12; // 1/12 chance of bad duner
-    if (chanceOfBadDuner == 1) {
+    int chanceOfBadDuner = rand() % 12; // 1/12 chance of bad duner
+    if (chanceOfBadDuner == 0) {
+        system("cls");
         std::cout << "The duner you ate had gone bad." << std::endl;
         UpdateStat(energy, 10 * PartialSuccess());
         UpdateStat(sanity, -10);
         UpdateStat(money, -10);
+        std::cout << "[0] To continue to the next day" << std::endl;
+        int next;
+        std::cin >> next;
+        while (next != 0) {
+            std::cout << "Invalid choice. Please try again." << std::endl;
+            std::cin >> next;
+        }
     }
     else {
         UpdateStat(sanity, 15 * PartialSuccess());
@@ -329,12 +482,20 @@ void EatDuner() {
     }
 }
 void GoToBar() {
-    int chanceOfDrinkingTooMuch = 1 + rand() % 5; // 1/5 chance of getting drunk
-    if (chanceOfDrinkingTooMuch == 1) {
+    int chanceOfDrinkingTooMuch = rand() % 5; // 1/5 chance of getting drunk
+    if (chanceOfDrinkingTooMuch == 0) {
+        system("cls");
         std::cout << "You drank too much the bar." << std::endl;
         UpdateStat(sanity, 10 * PartialSuccess());
-        UpdateStat(money, -20);
+        UpdateStat(money, -25);
         UpdateStat(energy, -25);
+        std::cout << "[0] To continue to the next day" << std::endl;
+        int next;
+        std::cin >> next;
+        while (next != 0) {
+            std::cout << "Invalid choice. Please try again." << std::endl;
+            std::cin >> next;
+        }
     }
     else {
         UpdateStat(sanity, 20 * PartialSuccess());
@@ -343,30 +504,54 @@ void GoToBar() {
     }
 }
 void GoToClub() {
-    int chanceOfOverdancing = 1 + rand() % 4; // 1/4 chance of overdancing
-    if (chanceOfOverdancing == 1) {
+    int chanceOfOverdancing = rand() % 4; // 1/4 chance of overdancing
+    if (chanceOfOverdancing == 0) {
+        system("cls");
         std::cout << "You overdanced at the club." << std::endl;
         UpdateStat(sanity, 30 * PartialSuccess());
-        UpdateStat(money, -25);
+        UpdateStat(money, -30);
         UpdateStat(energy, -40);
+        std::cout << "[0] To continue to the next day" << std::endl;
+        int next;
+        std::cin >> next;
+        while (next != 0) {
+            std::cout << "Invalid choice. Please try again." << std::endl;
+            std::cin >> next;
+        }
     }
     else {
         UpdateStat(sanity, 40 * PartialSuccess());
-        UpdateStat(money, -25);
+        UpdateStat(money, -30);
         UpdateStat(energy, -30);
     }
 }
 void Rest() {
-    int chanceOfDreams = 1 + rand() % 4; // 1/4 chance of good dreams
-    if (chanceOfDreams == 1) {
+    int chanceOfDreams = rand() % 4; // 1/4 chance of good dreams
+    if (chanceOfDreams == 0) {
+        system("cls");
         std::cout << "You dreamt of passing all your exams." << std::endl;
         UpdateStat(energy, 60);
         UpdateStat(sanity, 20);
+        std::cout << "[0] To continue to the next day" << std::endl;
+        int next;
+        std::cin >> next;
+        while (next != 0) {
+            std::cout << "Invalid choice. Please try again." << std::endl;
+            std::cin >> next;
+        }
     }
-    else if (chanceOfDreams == 2) { // 1/4 chance of nightmares
+    else if (chanceOfDreams == 1) { // 1/4 chance of nightmares
+        system("cls");
         std::cout << "You had nightmares about failing your exams." << std::endl;
         UpdateStat(energy, 40);
         UpdateStat(sanity, -10);
+        std::cout << "[0] To continue to the next day" << std::endl;
+        int next;
+        std::cin >> next;
+        while (next != 0) {
+            std::cout << "Invalid choice. Please try again." << std::endl;
+            std::cin >> next;
+        }
     }
     else {
         UpdateStat(energy, 50);
@@ -374,12 +559,20 @@ void Rest() {
     }
 }
 void Work() {
-    int chanceOfHardDay = 1 + rand() % 6; // 1/6 chance of hard day
-    if (chanceOfHardDay == 1) {
+    int chanceOfHardDay = rand() % 6; // 1/6 chance of hard day
+    if (chanceOfHardDay == 0) {
+		system("cls");
         std::cout << "You had a hard day at work." << std::endl;
         UpdateStat(money, 40 * PartialSuccess());
         UpdateStat(energy, -30);
         UpdateStat(sanity, -15);
+        std::cout << "[0] To continue to the next day" << std::endl;
+        int next;
+        std::cin >> next;
+        while (next != 0) {
+            std::cout << "Invalid choice. Please try again." << std::endl;
+            std::cin >> next;
+        }
     }
     else {
         UpdateStat(money, 40 * PartialSuccess());
@@ -387,7 +580,10 @@ void Work() {
         UpdateStat(sanity, -10);
     }
 }
+
+// handling exam taking and results
 void TakeExam() {
+    examNumber++;
     if (IsExamDay()) {
         UpdateStat(energy, -20);
         if (PassExam()) {
@@ -401,25 +597,175 @@ void TakeExam() {
         }
     }
 }
+
+// determining if the player passes the exam
 bool PassExam() {
     double luck = rand() % 101;
     double penalty = (examNumber - 1) * 5;
-    double success = knowledge * 0.75 + sanity * 0.1 + energy * 0.1 + luck * 0.2 - penalty;
+    double success = knowledge * 0.75 + sanity * 0.1 + energy * 0.15 + luck * 0.2 - penalty;
     return success >= 75;
 }
+
+// saving game state to a file
+void SaveGame() {
+    std::fstream file;
+    file.open("savegame.txt", std::fstream::out);
+    if (file.is_open()) {
+        file << money << std::endl;
+        file << energy << std::endl;
+        file << sanity << std::endl;
+        file << knowledge << std::endl;
+        file << examNumber << std::endl;
+        file << examsPassed << std::endl;
+        file << currentDay << std::endl;
+        file << examDays[3] << std::endl;
+        file.close();
+    }
+}
+
+// handling end game scenarios
 void EndGame() {
     if (examsPassed == 5) {
-        std::cout << "Congratulations!" << std::endl;
-        std::cout << "You have passed all your exams and" << std::endl;
-        std::cout << "survived the exam season of your life!" << std::endl;
+		TopBorder(LINE_WIDTH);
+		SetWidthLine(LINE_WIDTH, "Congratulations!");
+		SetWidthLine(LINE_WIDTH, "You have passed all your exams and");
+        SetWidthLine(LINE_WIDTH, "survived the exam season of your life!");
+		BottomBorder(LINE_WIDTH);
+    }
+    else if (sanity <= 0){
+		TopBorder(LINE_WIDTH);
+		SetWidthLine(LINE_WIDTH, "Game Over!");
+        SetWidthLine(LINE_WIDTH, "Your psyche couldn't handle it");
+		SetWidthLine(LINE_WIDTH, "and you dropped out of university.");
+		BottomBorder(LINE_WIDTH);
+    }
+    else if (money <= 0) {
+        TopBorder(LINE_WIDTH);
+        SetWidthLine(LINE_WIDTH, "Game Over!");
+        SetWidthLine(LINE_WIDTH, "You ran out of money but you had");
+        SetWidthLine(LINE_WIDTH, "enough savings for a train back home...");
+        BottomBorder(LINE_WIDTH);
     }
     else {
-        std::cout << "Game Over!" << std::endl;
-        std::cout << "Your psyche couldn't handle it" << std::endl;
-        std::cout << "and you dropped out of university." << std::endl;
+        TopBorder(LINE_WIDTH);
+        SetWidthLine(LINE_WIDTH, "Exam season is over!");
+        SetWidthLine(LINE_WIDTH, "You managed to pass", (double)examsPassed, "out of 5 exams.");
+        SetWidthLine(LINE_WIDTH, "Better luck next time!");
+		BottomBorder(LINE_WIDTH);
     }
-    exitGame();
+    ExitGame();
 }
-void exitGame() {
+
+// exiting the game
+void ExitGame() {
     exit(0);
+}
+
+// utility functions for formatting output
+int DigitsAfterDecimalPoint(double number) {
+    if (number - (int)number == 0) {
+        return 0;
+    }
+    else if (number * 10 - (int)(number * 10) == 0) {
+        return 1;
+    }
+    else {
+        return 2;
+    }
+}
+int ToInt (double number) {
+    return number * pow(10, DigitsAfterDecimalPoint(number));
+}
+int SymbolsInNumber(double number) {
+    if (number < 0) {
+        return 0;
+    }
+    else if (number == 0) {
+        return 1;
+	}
+    else {
+		int numberAsInt = ToInt(number);
+        int count = 0;
+        while (numberAsInt > 0) {
+            numberAsInt /= 10;
+            count++;
+        }
+        if (DigitsAfterDecimalPoint(number)) {
+			count++; // for decimal point
+        }
+        return count;
+    }
+}
+void NumberToString(double number, char* numberString) {
+	int numberAsInt = ToInt(number);
+    int digitsAfterDecimalPoint = DigitsAfterDecimalPoint(number);
+    int length = SymbolsInNumber(numberAsInt);
+    if (length == 0) {
+		numberString[0] = '\0';
+    }
+    else if (digitsAfterDecimalPoint == 0) {
+        for (int i = 0; i < length; i++) {
+            numberString[length - i - 1] = (numberAsInt % 10) + '0';
+            numberAsInt /= 10;
+        }
+        numberString[length] = '\0';
+    }
+    else {
+        for (int i = 0; i <= length; i++) {
+            if (i == digitsAfterDecimalPoint) {
+                numberString[length - i] = '.';
+            }
+            else {
+                numberString[length - i] = (numberAsInt % 10) + '0';
+                numberAsInt /= 10;
+            }
+        }
+        numberString[length + 1] = '\0';
+    }
+}
+// prints a line with a message and optional number, formatted to fit within the specified width
+void SetWidthLine(const int width, const char messageStart[], double number, const char messageEnd[]) {
+    int messageStartLength = strlen(messageStart);
+    int messageEndLength = strlen(messageEnd);
+	int numberLength = SymbolsInNumber(number); 
+    char* numberToString = new char[numberLength + 1]; // +1 for the null terminator
+	NumberToString(number, numberToString);
+    int messageLength = messageStartLength + numberLength + messageEndLength;
+    std::cout << VERTICAL;
+    for (int i = 0; i < width; i++) {
+        // print first half of a message 
+        if (i < messageStartLength) {
+            std::cout << messageStart[i];
+        }
+        // print number after adding space after the end of message start if there is a number
+        else if (number != -1 && i >= messageStartLength + 1 && i <= messageStartLength + numberLength) {
+            std::cout << numberToString[i - messageStartLength - 1];
+        }
+        // print the last half of the message after adding space behind the number if there is one
+        else if (messageEnd != " " && i >= messageStartLength + numberLength + 2 && i < messageLength + 2) {
+            std::cout << messageEnd[i - messageStartLength - numberLength - 2];
+        }
+        // fill the rest with spaces
+        else {
+            std::cout << " ";
+        }
+    }
+    std::cout << VERTICAL << std::endl;
+    delete[] numberToString;
+    numberToString = nullptr;
+}
+void HorizontalLine(int width) {
+    for (int i = 0; i < width; i++) {
+        std::cout << HORIZONTAL;
+    }
+}
+void TopBorder(int width) {
+    std::cout << TOP_LEFT;
+    HorizontalLine(width);
+    std::cout << TOP_RIGHT << std::endl;
+}
+void BottomBorder(int width) {
+    std::cout << BOTTOM_LEFT;
+    HorizontalLine(width);
+    std::cout << BOTTOM_RIGHT << std::endl;
 }
