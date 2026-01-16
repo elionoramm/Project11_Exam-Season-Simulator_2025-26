@@ -16,6 +16,7 @@
 #include <iostream>
 #include <windows.h>
 #include <fstream>
+#include <cmath>
 // Game state variables
 double money;
 double energy;
